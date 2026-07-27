@@ -1,3 +1,4 @@
+// Deploy: 2026-07-27-1550
 // api/jira-proxy.js — Vercel Serverless Function
 // Proxy server-side para a API do Jira (sem CORS no browser)
 // Variáveis de ambiente no Vercel: JIRA_EMAIL, JIRA_API_TOKEN, JIRA_BASE_URL
