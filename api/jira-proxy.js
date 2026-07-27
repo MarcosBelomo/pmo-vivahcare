@@ -1,5 +1,5 @@
-// Deploy: 2026-07-27-1555
 // api/jira-proxy.js — Vercel Serverless Function
+// Usa Cloud ID do Jira para autenticação correta
 const https = require("https");
 
 function httpsGet(url, headers) {
@@ -25,52 +25,88 @@ module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(204).end();
 
-  const { JIRA_EMAIL, JIRA_API_TOKEN, JIRA_BASE_URL } = process.env;
+  const { JIRA_EMAIL, JIRA_API_TOKEN, JIRA_BASE_URL, JIRA_CLOUD_ID } = process.env;
 
-  if (!JIRA_EMAIL || !JIRA_API_TOKEN || !JIRA_BASE_URL) {
-    return res.status(500).json({
-      error: `Variáveis ausentes: EMAIL=${!!JIRA_EMAIL} TOKEN=${!!JIRA_API_TOKEN} URL=${!!JIRA_BASE_URL}`,
-    });
+  if (!JIRA_EMAIL || !JIRA_API_TOKEN) {
+    return res.status(500).json({ error: "JIRA_EMAIL ou JIRA_API_TOKEN não configurados." });
   }
 
   const auth = Buffer.from(`${JIRA_EMAIL}:${JIRA_API_TOKEN}`).toString("base64");
   const headers = {
     Authorization: `Basic ${auth}`,
     Accept: "application/json",
-    "Content-Type": "application/json",
   };
 
-  // Usa GET com query params — universalmente suportado pela API v2
-  const searchJira = (params) => {
+  // Usa Cloud ID se disponível, senão usa BASE_URL
+  const cloudId = JIRA_CLOUD_ID || "a4f5777e-2496-4956-b0f3-222d9c1fae0c";
+  const baseUrl = JIRA_BASE_URL || "https://vivahcare.atlassian.net";
+
+  // Tenta com a API v3 via Cloud ID (api.atlassian.com)
+  const searchCloud = (params) => {
     const qs = new URLSearchParams({
       jql: params.jql,
-      maxResults: params.maxResults,
-      startAt: params.startAt || 0,
+      maxResults: String(params.maxResults),
+      startAt: String(params.startAt || 0),
       fields: params.fields.join(","),
     }).toString();
-    return httpsGet(`${JIRA_BASE_URL}/rest/api/2/search?${qs}`, headers);
+    return httpsGet(
+      `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/search?${qs}`,
+      headers
+    );
   };
 
+  // Fallback com BASE_URL direta API v2
+  const searchDirect = (params) => {
+    const qs = new URLSearchParams({
+      jql: params.jql,
+      maxResults: String(params.maxResults),
+      startAt: String(params.startAt || 0),
+      fields: params.fields.join(","),
+    }).toString();
+    return httpsGet(`${baseUrl}/rest/api/2/search?${qs}`, headers);
+  };
+
+  const FIELDS = [
+    "summary", "status", "assignee", "issuetype", "parent",
+    "customfield_10015", "duedate", "customfield_10020",
+    "customfield_10021", "labels", "subtasks",
+  ];
+
   try {
-    // 1. Busca sprint ativa
-    const probe = await searchJira({
+    // 1. Tenta via Cloud API primeiro
+    let probe = await searchCloud({
       jql: "project = VVO AND sprint in openSprints() ORDER BY key ASC",
       maxResults: 1,
-      fields: ["customfield_10020", "summary", "status"],
-      startAt: 0,
+      fields: FIELDS,
     });
+
+    // Fallback para API direta se Cloud API falhar
+    if (probe.status !== 200) {
+      probe = await searchDirect({
+        jql: "project = VVO AND sprint in openSprints() ORDER BY key ASC",
+        maxResults: 1,
+        fields: FIELDS,
+      });
+    }
 
     if (probe.status !== 200) {
       return res.status(probe.status).json({
         error: `Jira retornou ${probe.status}`,
-        jiraUrl: `${JIRA_BASE_URL}/rest/api/2/search`,
-        emailUsado: JIRA_EMAIL,
-        tokenInicio: JIRA_API_TOKEN?.slice(0, 20) + '...',
         detail: typeof probe.body === "string" ? probe.body.slice(0, 500) : JSON.stringify(probe.body).slice(0, 500),
+        cloudId,
+        baseUrl,
       });
     }
 
-    // 2. Extrai info da sprint
+    // Detecta qual API funcionou
+    const useCloud = (await searchCloud({
+      jql: "project = VVO AND sprint in openSprints() ORDER BY key ASC",
+      maxResults: 1, fields: ["summary"],
+    })).status === 200;
+
+    const search = useCloud ? searchCloud : searchDirect;
+
+    // 2. Info da sprint
     let sprintName = "Sprint Ativa", sprintStart = null, sprintEnd = null;
     if (probe.body.issues?.length > 0) {
       const sprints = probe.body.issues[0].fields?.customfield_10020 || [];
@@ -82,21 +118,13 @@ module.exports = async (req, res) => {
       }
     }
 
-    // 3. Busca todos os itens paginado
+    // 3. Busca todos os itens
     const allIssues = [];
     let startAt = 0;
-    const fields = [
-      "summary", "status", "assignee", "issuetype", "parent",
-      "customfield_10015", "duedate", "customfield_10020",
-      "customfield_10021", "labels", "subtasks",
-    ];
-
     while (true) {
-      const r = await searchJira({
+      const r = await search({
         jql: "project = VVO AND sprint in openSprints() ORDER BY key ASC",
-        maxResults: 100,
-        startAt,
-        fields,
+        maxResults: 100, startAt, fields: FIELDS,
       });
       if (r.status !== 200) break;
       const batch = r.body.issues || [];
