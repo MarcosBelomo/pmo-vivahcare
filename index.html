@@ -436,7 +436,9 @@ function renderRoadmap(itens) {
     const e = parseD(it.dueDate)   || parseD(it.startDate);
     if (!s || !e || e < minD || s > maxD) return false;
 
-      return true;
+            const st = (it.status||'').toLowerCase();
+          if (st.includes('conclu')) return false;
+          return true;
     
   }).sort((a, b) => {
     const sa = parseD(a.startDate), sb = parseD(b.startDate);
