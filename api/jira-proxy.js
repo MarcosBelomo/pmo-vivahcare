@@ -11,7 +11,7 @@ function httpsGet(url, headers) {
       res.on("data", (c) => (data += c));
       res.on("end", () => {
         try { resolve({ status: res.statusCode, body: JSON.parse(data) }); }
-        catch (e) { resolve({ status: res.statusCode, body: data }); }
+                catch (e) { resolve({ status: res.statusCode, body: data, parseError: e.message }); }
       });
     });
     req.on("error", reject);
@@ -97,7 +97,7 @@ module.exports = async (req, res) => {
       geradoEm: ganttData.geradoEm || new Date().toISOString(),
       kpis, pctConcluido, itens,
       fonte: "gantt-data.json (GitHub)",
-            _debug: { status: r.status, bodyType: typeof ganttData, len: String(ganttData).length, head: String(ganttData).slice(0,100), tail: String(ganttData).slice(-200) },
+                  _debug: { status: r.status, parseError: r.parseError || null, bodyType: typeof ganttData, len: String(ganttData).length, head: String(ganttData).slice(0,100), tail: String(ganttData).slice(-200) },
     });
 
   } catch (err) {
