@@ -97,9 +97,9 @@ module.exports = async (req, res) => {
       geradoEm: ganttData.geradoEm || new Date().toISOString(),
       kpis, pctConcluido, itens,
       fonte: "gantt-data.json (GitHub)",
+      _debug: { status: r.status, bodyType: typeof ganttData, keys: (ganttData && typeof ganttData === 'object') ? Object.keys(ganttData).slice(0,10) : String(ganttData).slice(0,150) },
     });
 
   } catch (err) {
-    return res.status(500).json({ error: err.message });
-  }
+    return res.status(500).json({ error: err.message });  }
 };
