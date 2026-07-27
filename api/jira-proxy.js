@@ -64,7 +64,10 @@ module.exports = async (req, res) => {
     if (probe.status !== 200) {
       return res.status(probe.status).json({
         error: `Jira retornou ${probe.status}`,
-        detail: typeof probe.body === "string" ? probe.body.slice(0, 300) : JSON.stringify(probe.body).slice(0, 300),
+        jiraUrl: `${JIRA_BASE_URL}/rest/api/2/search`,
+        emailUsado: JIRA_EMAIL,
+        tokenInicio: JIRA_API_TOKEN?.slice(0, 20) + '...',
+        detail: typeof probe.body === "string" ? probe.body.slice(0, 500) : JSON.stringify(probe.body).slice(0, 500),
       });
     }
 
