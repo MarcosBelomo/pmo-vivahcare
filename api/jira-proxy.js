@@ -97,7 +97,7 @@ module.exports = async (req, res) => {
       geradoEm: ganttData.geradoEm || new Date().toISOString(),
       kpis, pctConcluido, itens,
       fonte: "gantt-data.json (GitHub)",
-      _debug: { status: r.status, bodyType: typeof ganttData, keys: (ganttData && typeof ganttData === 'object') ? Object.keys(ganttData).slice(0,10) : String(ganttData).slice(0,150) },
+            _debug: { status: r.status, bodyType: typeof ganttData, len: String(ganttData).length, head: String(ganttData).slice(0,100), tail: String(ganttData).slice(-200) },
     });
 
   } catch (err) {
