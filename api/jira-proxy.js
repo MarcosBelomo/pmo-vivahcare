@@ -51,7 +51,7 @@ module.exports = async (req, res) => {
     const today = new Date(); today.setHours(0,0,0,0);
 
     // gantt-data.json tem os itens em formato específico — adapta para o formato do relatório
-    const itens = (ganttData.items || ganttData.tasks || ganttData.issues || []).map(item => {
+    const itens = (ganttData.itens || ganttData.items || ganttData.tasks || ganttData.issues || []).map(item => {
       const dueDate = item.dueDate || item.due_date || item.endDate || null;
       const daysRemaining = dueDate
         ? Math.ceil((new Date(dueDate) - today) / 86400000)
