@@ -48,13 +48,20 @@ module.exports = async (req, res) => {
     "Content-Type": "application/json",
   };
 
-  // Tenta API v2 (mais compatível com Jira Server/Data Center)
-  const postV2 = (body) =>
-    httpsReq(`${JIRA_BASE_URL}/rest/api/2/search`, "POST", headers, JSON.stringify(body));
+  // API v2 do Jira Cloud usa POST com JSON body no /rest/api/2/search
+  // mas o Content-Type precisa ser application/json explicitamente
+  const searchJira = (params) => {
+    const body = JSON.stringify(params);
+    return httpsReq(`${JIRA_BASE_URL}/rest/api/2/search`, "POST", {
+      ...headers,
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+    }, body);
+  };
 
   try {
     // 1. Busca sprint ativa
-    const probe = await postV2({
+    const probe = await searchJira({
       jql: "project = VVO AND sprint in openSprints() ORDER BY key ASC",
       maxResults: 1,
       fields: ["customfield_10020", "summary", "status"],
@@ -93,7 +100,7 @@ module.exports = async (req, res) => {
     ];
 
     while (true) {
-      const r = await postV2({
+      const r = await searchJira({
         jql: "project = VVO AND sprint in openSprints() ORDER BY key ASC",
         maxResults: 100,
         startAt,
