@@ -2,17 +2,10 @@
 // api/jira-proxy.js — Vercel Serverless Function
 const https = require("https");
 
-function httpsReq(url, method, headers, body) {
+function httpsGet(url, headers) {
   return new Promise((resolve, reject) => {
     const u = new URL(url);
-    const opts = {
-      hostname: u.hostname,
-      path: u.pathname + u.search,
-      method,
-      headers: body
-        ? { ...headers, "Content-Length": Buffer.byteLength(body) }
-        : headers,
-    };
+    const opts = { hostname: u.hostname, path: u.pathname + u.search, method: "GET", headers };
     const req = https.request(opts, (res) => {
       let data = "";
       res.on("data", (c) => (data += c));
@@ -22,7 +15,6 @@ function httpsReq(url, method, headers, body) {
       });
     });
     req.on("error", reject);
-    if (body) req.write(body);
     req.end();
   });
 }
@@ -48,15 +40,15 @@ module.exports = async (req, res) => {
     "Content-Type": "application/json",
   };
 
-  // API v2 do Jira Cloud usa POST com JSON body no /rest/api/2/search
-  // mas o Content-Type precisa ser application/json explicitamente
+  // Usa GET com query params — universalmente suportado pela API v2
   const searchJira = (params) => {
-    const body = JSON.stringify(params);
-    return httpsReq(`${JIRA_BASE_URL}/rest/api/2/search`, "POST", {
-      ...headers,
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-    }, body);
+    const qs = new URLSearchParams({
+      jql: params.jql,
+      maxResults: params.maxResults,
+      startAt: params.startAt || 0,
+      fields: params.fields.join(","),
+    }).toString();
+    return httpsGet(`${JIRA_BASE_URL}/rest/api/2/search?${qs}`, headers);
   };
 
   try {
