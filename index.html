@@ -436,15 +436,8 @@ function renderRoadmap(itens) {
     const e = parseD(it.dueDate)   || parseD(it.startDate);
     if (!s || !e || e < minD || s > maxD) return false;
 
-    // Status
-    const st = (it.status||'').toLowerCase();
-    if (!st.includes('pendente') && !st.includes('andamento')) return false;
-
-    // Subtarefas
-    const subs = subsByParent[it.key] || [];
-    if (subs.length === 0) return true;
-    return subs.some(sub => !/conclu/i.test(sub.status||''));
-
+      return true;
+    
   }).sort((a, b) => {
     const sa = parseD(a.startDate), sb = parseD(b.startDate);
     const ea = parseD(a.dueDate),   eb = parseD(b.dueDate);
