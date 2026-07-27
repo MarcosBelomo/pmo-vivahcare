@@ -35,7 +35,7 @@ module.exports = async (req, res) => {
     if (GITHUB_TOKEN) headers["Authorization"] = `token ${GITHUB_TOKEN}`;
 
     const r = await httpsGet(
-      "https://raw.githubusercontent.com/MarcosBelomo/Gantt_Jira/main/gantt-data.json",
+      "https://raw.githubusercontent.com/MarcosBelomo/Gantt_Jira/main/data/gantt-data.json",
       headers
     );
 
