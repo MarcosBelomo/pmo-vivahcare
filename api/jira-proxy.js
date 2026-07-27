@@ -10,8 +10,8 @@ function httpsGet(url, headers) {
       let data = "";
       res.on("data", (c) => (data += c));
       res.on("end", () => {
-        try { resolve({ status: res.statusCode, body: JSON.parse(data) }); }
-                catch (e) { resolve({ status: res.statusCode, body: data, parseError: e.message }); }
+              try { resolve({ status: res.statusCode, body: JSON.parse(data.trim()) }); }
+              catch (e) { resolve({ status: res.statusCode, body: data }); }
       });
     });
     req.on("error", reject);
@@ -97,8 +97,7 @@ module.exports = async (req, res) => {
       geradoEm: ganttData.geradoEm || new Date().toISOString(),
       kpis, pctConcluido, itens,
       fonte: "gantt-data.json (GitHub)",
-                  _debug: { status: r.status, parseError: r.parseError || null, bodyType: typeof ganttData, len: String(ganttData).length, head: String(ganttData).slice(0,100), tail: String(ganttData).slice(-200) },
-    });
+                  });
 
   } catch (err) {
     return res.status(500).json({ error: err.message });  }
