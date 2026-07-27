@@ -41,21 +41,7 @@ module.exports = async (req, res) => {
   const cloudId = JIRA_CLOUD_ID || "a4f5777e-2496-4956-b0f3-222d9c1fae0c";
   const baseUrl = JIRA_BASE_URL || "https://vivahcare.atlassian.net";
 
-  // Tenta com a API v3 via Cloud ID (api.atlassian.com)
-  const searchCloud = (params) => {
-    const qs = new URLSearchParams({
-      jql: params.jql,
-      maxResults: String(params.maxResults),
-      startAt: String(params.startAt || 0),
-      fields: params.fields.join(","),
-    }).toString();
-    return httpsGet(
-      `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/search?${qs}`,
-      headers
-    );
-  };
-
-  // Fallback com BASE_URL direta API v2
+  // Usa URL direta com API v3
   const searchDirect = (params) => {
     const qs = new URLSearchParams({
       jql: params.jql,
@@ -63,8 +49,9 @@ module.exports = async (req, res) => {
       startAt: String(params.startAt || 0),
       fields: params.fields.join(","),
     }).toString();
-    return httpsGet(`${baseUrl}/rest/api/2/search?${qs}`, headers);
+    return httpsGet(`${baseUrl}/rest/api/3/search?${qs}`, headers);
   };
+  const searchCloud = searchDirect;
 
   const FIELDS = [
     "summary", "status", "assignee", "issuetype", "parent",
@@ -98,13 +85,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Detecta qual API funcionou
-    const useCloud = (await searchCloud({
-      jql: "project = VVO AND sprint in openSprints() ORDER BY key ASC",
-      maxResults: 1, fields: ["summary"],
-    })).status === 200;
-
-    const search = useCloud ? searchCloud : searchDirect;
+    const search = searchDirect;
 
     // 2. Info da sprint
     let sprintName = "Sprint Ativa", sprintStart = null, sprintEnd = null;
