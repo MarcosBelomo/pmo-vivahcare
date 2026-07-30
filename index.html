@@ -428,7 +428,7 @@ const roadmap = `
 <div class="card-num">3</div>
 <div>
 <div class="card-title">Roadmap — Histórias e Tarefas</div>
-<div class="card-sub">Projeto Vivahcare · Período: 07/07/2026 – 10/08/2026 · H = História · T = Tarefa</div>
+<div class="card-sub">Projeto Vivahcare · ${d.sprint || 'Sprint Ativa'} · Todas as não concluídas · H = História · T = Tarefa</div>
 </div>
 </div>
 <div style="display:flex;gap:18px;align-items:center;font-size:11px;flex-shrink:0;">
@@ -445,31 +445,18 @@ const roadmap = `
 
 document.getElementById('main').innerHTML = capa + kpis + roadmap;
 
-setTimeout(() => renderRoadmap(d.itens || []), 80);
+setTimeout(() => renderRoadmap(d.itens || [], d.sprintStart, d.sprintEnd), 80);
 }
 
 // ── ROADMAP GANTT SVG ──
-function renderRoadmap(itens) {
+function renderRoadmap(itens, sprintStart, sprintEnd) {
 const container = document.getElementById('roadmapContainer');
 if (!container) return;
 
-// Período fixo
-const minD = new Date(2026, 6, 7); // 07/07/2026
-const maxD = new Date(2026, 7, 10); // 10/08/2026
 const today = new Date(); today.setHours(0,0,0,0);
-const totalDays = diffD(minD, maxD) + 1;
 
-// Mapa subtarefas
-const subsByParent = {};
-itens.forEach(it => {
-if (it.isSubtask && it.parentKey) {
-if (!subsByParent[it.parentKey]) subsByParent[it.parentKey] = [];
-subsByParent[it.parentKey].push(it);
-}
-});
-
-// Filtra: H e T, sem épicos, sem subtarefas
-// status pendente ou andamento, subtask não concluída, barra visível no período
+// Filtra: H e T, sem épicos, sem subtarefas, status não concluído
+// (mostra TODAS as histórias/tarefas em aberto da sprint, com ou sem data definida)
 const lista = itens.filter(it => {
 if (it.isSubtask) return false;
 const t = (it.type||'').toLowerCase();
@@ -477,12 +464,6 @@ if (t.includes('epic') || t.includes('épico')) return false;
 const isH = t.includes('hist') || t.includes('story');
 const isT = t.includes('tarefa') || t.includes('task');
 if (!isH && !isT) return false;
-if (!it.startDate && !it.dueDate) return false;
-
-// Verifica se tem barra no período
-const s = parseD(it.startDate) || parseD(it.dueDate);
-const e = parseD(it.dueDate) || parseD(it.startDate);
-if (!s || !e || e < minD || s > maxD) return false;
 
 const st = (it.status||'').toLowerCase();
 if (st.includes('conclu')) return false;
@@ -494,14 +475,42 @@ const ea = parseD(a.dueDate), eb = parseD(b.dueDate);
 if (sa && sb && sa - sb !== 0) return sa - sb;
 if (sa && !sb) return -1;
 if (!sa && sb) return 1;
-if (ea && eb) return ea - eb;
-return 0;
+if (ea && eb && ea - eb !== 0) return ea - eb;
+if (ea && !eb) return -1;
+if (!ea && eb) return 1;
+return (a.key||'').localeCompare(b.key||'');
 });
 
 if (lista.length === 0) {
-container.innerHTML = '<div style="padding:36px;text-align:center;color:var(--muted);font-size:13px;">Nenhuma história/tarefa com barra no período 07/07–10/08/2026 encontrada.</div>';
+container.innerHTML = '<div style="padding:36px;text-align:center;color:var(--muted);font-size:13px;">Nenhuma história/tarefa em aberto encontrada na sprint.</div>';
 return;
 }
+
+// Período do gráfico: baseado nas datas da sprint, estendido para cobrir
+// qualquer item cuja data caia fora do intervalo da sprint (ex.: atrasados)
+let minD = parseD(sprintStart);
+let maxD = parseD(sprintEnd);
+lista.forEach(it => {
+const s = parseD(it.startDate);
+const e = parseD(it.dueDate);
+if (s && (!minD || s < minD)) minD = s;
+if (e && (!maxD || e > maxD)) maxD = e;
+if (s && (!maxD || s > maxD)) maxD = s;
+if (e && (!minD || e < minD)) minD = e;
+});
+if (!minD) minD = new Date(today);
+if (!maxD || maxD < minD) maxD = addD(minD, 30);
+
+const totalDays = diffD(minD, maxD) + 1;
+
+// Mapa subtarefas
+const subsByParent = {};
+itens.forEach(it => {
+if (it.isSubtask && it.parentKey) {
+if (!subsByParent[it.parentKey]) subsByParent[it.parentKey] = [];
+subsByParent[it.parentKey].push(it);
+}
+});
 
 // Dimensões
 const ROW_H = 34;
@@ -585,11 +594,14 @@ svg += `<text x="96" y="${mid+4}" font-size="10" fill="#1a2233">${lbl.replace(/&
 // Separador
 svg += `<line x1="0" y1="${y+ROW_H}" x2="${W}" y2="${y+ROW_H}" stroke="#edf0f6" stroke-width="0.5"/>`;
 
-// Barra
-const s = parseD(it.startDate)||parseD(it.dueDate);
-const e = parseD(it.dueDate) ||parseD(it.startDate);
-const csx = Math.max(0, diffD(minD, s));
-const cex = Math.min(totalDays-1, diffD(minD, e));
+// Barra (ou aviso de "sem data" quando o item não tem startDate/dueDate)
+const s = parseD(it.startDate);
+const e = parseD(it.dueDate);
+if (s || e) {
+const s2 = s || e;
+const e2 = e || s;
+const csx = Math.max(0, diffD(minD, s2));
+const cex = Math.min(totalDays-1, diffD(minD, e2));
 const bx = (LEFT_W + csx * dayW).toFixed(2);
 const bw = Math.max((cex-csx+1)*dayW - 1, dayW*0.3).toFixed(2);
 const bh = 16;
@@ -597,11 +609,13 @@ const by = (mid - bh/2).toFixed(2);
 const col = /andamento/i.test(it.status||'') ? '#F2A93B' : '#9aa1b1';
 svg += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="3" fill="${col}" opacity="0.88"/>`;
 
-// Label datas
-const dl = `${fmtDateShort(s)}–${fmtDateShort(e)}`;
+const dl = `${fmtDateShort(s2)}–${fmtDateShort(e2)}`;
 const lx = (parseFloat(bx)+parseFloat(bw)+4).toFixed(2);
 if (parseFloat(lx)+62 < W)
 svg += `<text x="${lx}" y="${mid+4}" font-size="8" fill="#a0aabf">${dl}</text>`;
+} else {
+svg += `<text x="${LEFT_W+8}" y="${mid+4}" font-size="9" font-style="italic" fill="#a0aabf">Sem data definida</text>`;
+}
 });
 
 svg += '</svg>';
