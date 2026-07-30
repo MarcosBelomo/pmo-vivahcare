@@ -414,9 +414,6 @@ const kpis = `
 <div class="lbl">Itens Bloqueados</div>
 </div>
 </div>
-<div class="resp-grid">
-${(k.porResponsavel||[]).map(r => `<span class="resp-chip">${r.nome}: ${r.total}</span>`).join('')}
-</div>
 </div>
 </div>`;
 
@@ -564,7 +561,7 @@ const d = addD(minD, i);
 const x = (LEFT_W + i*dayW + dayW/2).toFixed(2);
 const isT = todayOff === i;
 const isMon = d.getDay() === 1;
-svg += `<text x="${x}" y="36" font-size="${isT||isMon?'9':'8'}" font-weight="${isT||isMon?'700':'400'}" fill="${isT?'#2F6FED':'#a0aabf'}" text-anchor="middle">${d.getDate()}</text>`;
+svg += `<text x="${x}" y="40" font-size="${isT||isMon?'9':'8'}" font-weight="${isT||isMon?'700':'400'}" fill="${isT?'#2F6FED':'#a0aabf'}" text-anchor="middle" transform="rotate(-90 ${x} 40)">${d.getDate()}</text>`;
 }
 
 // Separadores header
