@@ -849,6 +849,35 @@ const homologFim = new Date(year, 7, 31);
 const producaoInicio = new Date(year, 8, 1);
 const diasAteHomolog = diffD(today, homologInicio);
 
+// ── Saúde do Projeto (visão gerencial/PMO) ──
+const spStart = parseD(lastRoadmapSprintStart);
+const spEnd = parseD(lastRoadmapSprintEnd);
+let pctTempo = 0;
+if (spStart && spEnd && spEnd > spStart) {
+pctTempo = Math.min(100, Math.max(0, Math.round(diffD(spStart, today) / diffD(spStart, spEnd) * 100)));
+}
+const gapCronograma = lastPctConcluido - pctTempo;
+let ragStatus = 'green', ragLabel = 'No Prazo';
+if ((k.atrasados||0) > 2 || (k.bloqueados||0) > 2 || gapCronograma <= -20) { ragStatus = 'red'; ragLabel = 'Crítico'; }
+else if ((k.atrasados||0) > 0 || (k.bloqueados||0) > 0 || gapCronograma <= -10) { ragStatus = 'amber'; ragLabel = 'Atenção'; }
+const itensPendentes = Math.max((k.total||0) - (k.concluido||0), 0);
+const ritmoNecessario = diasAteHomolog > 0 ? (itensPendentes/diasAteHomolog).toFixed(1) : '—';
+
+// ── Distribuição por Tipo de Item (visão gerencial) ──
+const tipoMap = {};
+itens.forEach(it => {
+const tRaw = (it.type||'').toLowerCase();
+let t = 'Outro';
+if (tRaw.includes('hist') || tRaw.includes('story')) t = 'História';
+else if (tRaw.includes('tarefa') || tRaw.includes('task')) t = 'Tarefa';
+else if (tRaw.includes('bug')) t = 'Bug';
+tipoMap[t] = (tipoMap[t]||0) + 1;
+});
+const tipoLabels = Object.keys(tipoMap);
+const tipoData = Object.values(tipoMap);
+const tipoColorMap = { 'História':'#2F6FED', 'Tarefa':'#17A398', 'Bug':'#D64545', 'Outro':'#9aa1b1' };
+const tipoColors = tipoLabels.map(l => tipoColorMap[l] || '#9aa1b1');
+
 // ── KPIs de produtividade ──
 const kpiRow = `
 <div class="kpi-grid" style="grid-template-columns:repeat(6,1fr);">
@@ -877,6 +906,27 @@ const milestones = `
 <div class="m-tag">Em seguida</div>
 <div class="m-title">Produção (Go-live)</div>
 <div class="m-date">A partir de ${fmtDate(isoLocal(producaoInicio))}</div>
+</div>
+</div>`;
+
+// ── Saúde do Projeto (visão gerencial) ──
+const saude = `
+<div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);">
+<div class="kpi-card ${ragStatus}">
+<div class="num" style="font-size:20px;">${ragLabel}</div>
+<div class="lbl">Saúde Geral do Projeto</div>
+</div>
+<div class="kpi-card ${gapCronograma <= -10 ? 'red' : gapCronograma < 0 ? 'amber' : 'green'}">
+<div class="num">${gapCronograma>0?'+':''}${gapCronograma}pp</div>
+<div class="lbl">Progresso vs. Prazo Decorrido</div>
+</div>
+<div class="kpi-card blue">
+<div class="num">${pctTempo}%</div>
+<div class="lbl">Tempo de Sprint Decorrido</div>
+</div>
+<div class="kpi-card ${parseFloat(ritmoNecessario)>2 ? 'amber' : 'blue'}">
+<div class="num">${ritmoNecessario}<span style="font-size:16px;">/dia</span></div>
+<div class="lbl">Ritmo Necessário até Homologação</div>
 </div>
 </div>`;
 
@@ -955,8 +1005,19 @@ document.getElementById('metricasMain').innerHTML = `
 <div class="card-header">
 <div class="card-num">M3</div>
 <div>
+<div class="card-title">Saúde do Projeto</div>
+<div class="card-sub">Visão gerencial · progresso vs. prazo e ritmo necessário até a Homologação</div>
+</div>
+</div>
+<div class="card-body">${saude}</div>
+</div>
+
+<div class="card">
+<div class="card-header">
+<div class="card-num">M4</div>
+<div>
 <div class="card-title">Acompanhamento — Gráficos</div>
-<div class="card-sub">Distribuição mensal, status, responsáveis e progresso desde o início do projeto</div>
+<div class="card-sub">Distribuição mensal, por status, por tipo de item e progresso desde o início do projeto</div>
 </div>
 </div>
 <div class="card-body">
@@ -972,9 +1033,9 @@ document.getElementById('metricasMain').innerHTML = `
 <canvas id="chartStatus"></canvas>
 </div>
 <div class="chart-card">
-<h4>Itens por Responsável</h4>
-<p>Carga de trabalho atual da equipe</p>
-<canvas id="chartResponsavel"></canvas>
+<h4>Distribuição por Tipo de Item</h4>
+<p>História · Tarefa · Bug · Outro</p>
+<canvas id="chartTipo"></canvas>
 </div>
 <div class="chart-card">
 <h4>Progresso Acumulado</h4>
@@ -987,7 +1048,7 @@ document.getElementById('metricasMain').innerHTML = `
 
 <div class="card">
 <div class="card-header">
-<div class="card-num">M4</div>
+<div class="card-num">M5</div>
 <div>
 <div class="card-title">Gestão de Riscos</div>
 <div class="card-sub">Riscos identificados, probabilidade, impacto e mitigação</div>
@@ -1029,12 +1090,10 @@ datasets: [{ data: [stConcluido, stAndamento, stPendente], backgroundColor: ['#2
 options: { responsive:true, plugins:{legend:{position:'bottom'}} }
 }));
 
-const respLabels = (k.porResponsavel||[]).map(r => r.nome);
-const respData = (k.porResponsavel||[]).map(r => r.total);
-metricasCharts.push(new Chart(document.getElementById('chartResponsavel'), {
-type: 'bar',
-data: { labels: respLabels, datasets: [{ label: 'Itens', data: respData, backgroundColor: '#2F6FED' }] },
-options: { indexAxis:'y', responsive:true, plugins:{legend:{display:false}}, scales:{x:{beginAtZero:true,ticks:{precision:0}}} }
+metricasCharts.push(new Chart(document.getElementById('chartTipo'), {
+type: 'doughnut',
+data: { labels: tipoLabels, datasets: [{ data: tipoData, backgroundColor: tipoColors }] },
+options: { responsive:true, plugins:{legend:{position:'bottom'}} }
 }));
 
 metricasCharts.push(new Chart(document.getElementById('chartProgresso'), {
