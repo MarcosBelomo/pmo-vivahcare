@@ -56,7 +56,7 @@ transition:opacity 0.15s,transform 0.1s;
 .btn svg{width:15px;height:15px;flex-shrink:0;}
 
 /* MAIN */
-main{max-width:1140px;margin:0 auto;padding:28px 20px 60px;}
+main{max-width:1720px;margin:0 auto;padding:28px 24px 60px;}
 
 /* CARDS */
 .card{
@@ -158,7 +158,7 @@ text-align:center;padding:64px 24px;color:var(--muted);
 .empty p{font-size:13px;margin-bottom:22px;}
 
 /* ROADMAP SVG */
-#roadmapContainer{width:100%;overflow-x:hidden;}
+#roadmapContainer{width:100%;overflow-x:auto;}
 
 /* LEGENDA */
 .legenda{
@@ -437,7 +437,7 @@ const roadmap = `
 </span>
 </div>
 </div>
-<div id="roadmapContainer" style="width:100%;overflow:hidden;"></div>
+<div id="roadmapContainer" style="width:100%;overflow-x:auto;"></div>
 </div>`;
 
 document.getElementById('main').innerHTML = capa + kpis + roadmap;
@@ -513,10 +513,11 @@ subsByParent[it.parentKey].push(it);
 const ROW_H = 34;
 const HDR_H = 48;
 const totalH = HDR_H + lista.length * ROW_H;
-const W = container.offsetWidth || 1100;
-const LEFT_W = Math.min(400, Math.floor(W * 0.35));
-const RIGHT_W = W - LEFT_W - 1;
-const dayW = RIGHT_W / totalDays;
+const availW = container.offsetWidth || 1100;
+const LEFT_W = Math.min(400, Math.floor(availW * 0.3));
+const MIN_DAY_W = 20;
+const dayW = Math.max((availW - LEFT_W - 1) / totalDays, MIN_DAY_W);
+const W = LEFT_W + dayW * totalDays + 1;
 
 let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${totalH}" viewBox="0 0 ${W} ${totalH}" style="display:block;width:100%;font-family:Segoe UI,Arial,sans-serif;">`;
 
@@ -561,7 +562,7 @@ const d = addD(minD, i);
 const x = (LEFT_W + i*dayW + dayW/2).toFixed(2);
 const isT = todayOff === i;
 const isMon = d.getDay() === 1;
-svg += `<text x="${x}" y="40" font-size="${isT||isMon?'9':'8'}" font-weight="${isT||isMon?'700':'400'}" fill="${isT?'#2F6FED':'#a0aabf'}" text-anchor="middle" transform="rotate(-90 ${x} 40)">${d.getDate()}</text>`;
+svg += `<text x="${x}" y="42" font-size="${isT||isMon?'10':'9'}" font-weight="${isT||isMon?'700':'500'}" fill="${isT?'#2F6FED':'#7c8598'}" text-anchor="middle" transform="rotate(-90 ${x} 42)">${d.getDate()}</text>`;
 }
 
 // Separadores header
