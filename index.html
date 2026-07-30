@@ -466,7 +466,7 @@ const isT = t.includes('tarefa') || t.includes('task');
 if (!isH && !isT) return false;
 
 const st = (it.status||'').toLowerCase();
-if (st.includes('conclu')) return false;
+if (st.includes('conclu') || st.includes('done') || st.includes('finaliz') || st.includes('fechad') || st.includes('cancel')) return false;
 return true;
 
 }).sort((a, b) => {
