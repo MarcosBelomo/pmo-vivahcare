@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Projeto Vivahcare — PMO</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
 :root {
 --navy: #1B2A4A;
@@ -106,6 +107,66 @@ transition:background .15s;
 .view-btn:hover{background:rgba(255,255,255,0.22);}
 .view-btn.active{background:var(--blue);border-color:var(--blue);}
 
+/* BOTÃO MÉTRICAS (destacado) */
+.btn-metricas{
+background:linear-gradient(135deg,#7C3AED 0%,#2F6FED 100%);
+color:#fff;box-shadow:0 0 0 2px rgba(124,58,237,0.25),0 2px 10px rgba(124,58,237,0.35);
+}
+
+/* PÁGINA DE MÉTRICAS */
+.metricas-page{
+display:none;position:fixed;inset:0;background:var(--light);
+z-index:400;overflow-y:auto;
+}
+.metricas-page.visible{display:block;}
+.metricas-topbar{
+background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:space-between;
+padding:0 32px;height:60px;position:sticky;top:0;z-index:401;box-shadow:0 2px 8px rgba(0,0,0,0.2);
+}
+.btn-close-metricas{
+background:rgba(255,255,255,0.14);color:#fff;border:none;border-radius:9px;
+padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;
+display:flex;align-items:center;gap:7px;transition:background .15s;
+}
+.btn-close-metricas:hover{background:rgba(255,255,255,0.24);}
+.metricas-main{max-width:1720px;margin:0 auto;padding:28px 24px 60px;}
+
+/* GRID DE GRÁFICOS */
+.chart-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;}
+.chart-card{background:var(--light);border:1px solid var(--border);border-radius:11px;padding:18px;}
+.chart-card h4{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:3px;}
+.chart-card p{font-size:11px;color:var(--muted);margin-bottom:14px;}
+.chart-card canvas{max-height:260px;}
+
+/* MARCOS (Homologação / Produção) */
+.milestone-track{display:flex;gap:14px;align-items:stretch;flex-wrap:wrap;}
+.milestone{flex:1;min-width:200px;position:relative;padding:16px 18px;border-radius:11px;}
+.milestone.done{background:#eaf7ee;border:1px solid #bfe6cb;}
+.milestone.current{background:#fff6e6;border:1px solid #f3d99a;}
+.milestone.next{background:#eaf0fe;border:1px solid #c6d6fb;}
+.milestone .m-tag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px;}
+.milestone .m-title{font-size:14px;font-weight:800;color:var(--navy);margin-bottom:4px;}
+.milestone .m-date{font-size:11.5px;font-weight:600;color:var(--muted);}
+
+/* TABELA DE RISCOS */
+.risk-table{width:100%;border-collapse:collapse;font-size:12px;}
+.risk-table th{
+text-align:left;background:#f0f4fb;color:var(--muted);font-size:10px;
+text-transform:uppercase;letter-spacing:.04em;padding:10px 12px;border-bottom:2px solid var(--border);
+}
+.risk-table td{padding:11px 12px;border-bottom:1px solid var(--border);vertical-align:top;}
+.risk-badge{
+display:inline-block;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:700;
+text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;
+}
+.risk-badge.red{background:#fbe1e1;color:var(--red);}
+.risk-badge.amber{background:#fdf0da;color:#c88800;}
+.risk-badge.green{background:#e1f3e7;color:var(--green);}
+
+@media (max-width:900px){
+.chart-grid{grid-template-columns:1fr;}
+}
+
 /* KPI GRID */
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
 .kpi-card{
@@ -185,7 +246,7 @@ padding:20px;border-top:1px solid var(--border);margin-top:32px;
 
 @media print{
 @page{size:A4 landscape;margin:8mm;}
-.topbar,.overlay,.toast{display:none!important;}
+.topbar,.overlay,.toast,.metricas-page{display:none!important;}
 main{padding:0!important;}
 .card{box-shadow:none!important;border:1px solid #dde3ef;page-break-inside:avoid;}
 .capa{page-break-after:always;}
@@ -212,6 +273,12 @@ main{padding:0!important;}
 </svg>
 Atualizar do Jira
 </button>
+<button class="btn btn-metricas" id="btnMetricas" onclick="toggleMetricas()">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+</svg>
+Métricas
+</button>
 <button class="btn btn-red" id="btnPdf" onclick="gerarPDF()">
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -235,6 +302,23 @@ Gerar PDF
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
+
+<!-- PÁGINA DE MÉTRICAS -->
+<div class="metricas-page" id="metricasPage">
+<div class="metricas-topbar">
+<div>
+<div class="topbar-title">Métricas do Projeto</div>
+<div class="topbar-sub">Visão consolidada · produtividade, indicadores e gestão de riscos</div>
+</div>
+<button class="btn-close-metricas" onclick="toggleMetricas()">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+</svg>
+Fechar
+</button>
+</div>
+<div class="metricas-main" id="metricasMain"></div>
+</div>
 
 <!-- CONTEÚDO -->
 <main id="main">
@@ -459,6 +543,12 @@ document.getElementById('main').innerHTML = capa + kpis + roadmap;
 lastRoadmapItens = d.itens || [];
 lastRoadmapSprintStart = d.sprintStart;
 lastRoadmapSprintEnd = d.sprintEnd;
+lastKpis = d.kpis;
+lastPctConcluido = d.pctConcluido;
+lastSprintName = d.sprint;
+lastGeradoEm = d.geradoEm;
+
+if (metricasOpen) buildMetricas();
 
 setTimeout(() => {
 updateViewBtns();
@@ -471,6 +561,12 @@ let currentViewMode = 'dia';
 let lastRoadmapItens = [];
 let lastRoadmapSprintStart = null;
 let lastRoadmapSprintEnd = null;
+let lastKpis = null;
+let lastPctConcluido = 0;
+let lastSprintName = '';
+let lastGeradoEm = null;
+let metricasOpen = false;
+let metricasCharts = [];
 
 function updateViewBtns() {
 ['dia','semana','mes'].forEach(m => {
@@ -677,6 +773,275 @@ svg += `<text x="${LEFT_W+8}" y="${mid+3}" font-size="8" font-style="italic" fil
 
 svg += '</svg>';
 container.innerHTML = svg;
+}
+
+// ── MÉTRICAS DO PROJETO (página dedicada, abre/fecha pelo botão "Métricas") ──
+const MESES_PT = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+
+function monthLabel(d) {
+return `${MESES_PT[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`;
+}
+
+function isoLocal(d) {
+return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function toggleMetricas() {
+const page = document.getElementById('metricasPage');
+if (!page) return;
+if (metricasOpen) {
+page.classList.remove('visible');
+metricasOpen = false;
+} else {
+if (!lastKpis) {
+showToast('Carregue os dados do Jira antes de abrir as Métricas.', 'error');
+return;
+}
+buildMetricas();
+page.classList.add('visible');
+metricasOpen = true;
+}
+}
+
+function buildMetricas() {
+// Destrói gráficos anteriores antes de recriar (evita vazamento/duplicidade)
+metricasCharts.forEach(c => c.destroy());
+metricasCharts = [];
+
+const itens = (lastRoadmapItens || []).filter(it => !it.isSubtask);
+const k = lastKpis || {};
+
+// ── Buckets mensais (por data de vencimento, com fallback na data de início) ──
+const monthMap = {};
+itens.forEach(it => {
+const d = parseD(it.dueDate) || parseD(it.startDate);
+if (!d) return;
+const mk = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+if (!monthMap[mk]) monthMap[mk] = { date: new Date(d.getFullYear(), d.getMonth(), 1), total: 0, concluido: 0 };
+monthMap[mk].total++;
+const st = (it.status||'').toLowerCase();
+if (st.includes('conclu') || st.includes('done') || st.includes('finaliz') || st.includes('fechad')) monthMap[mk].concluido++;
+});
+const months = Object.values(monthMap).sort((a,b) => a.date - b.date);
+
+// ── Status mutuamente exclusivos ──
+let stConcluido = 0, stAndamento = 0, stPendente = 0;
+itens.forEach(it => {
+const st = (it.status||'').toLowerCase();
+if (st.includes('conclu') || st.includes('done') || st.includes('finaliz') || st.includes('fechad')) stConcluido++;
+else if (st.includes('andamento')) stAndamento++;
+else stPendente++;
+});
+
+// ── Duração média dos itens (dias) ──
+let durSum = 0, durCount = 0;
+itens.forEach(it => {
+const s = parseD(it.startDate), e = parseD(it.dueDate);
+if (s && e && e >= s) { durSum += diffD(s,e); durCount++; }
+});
+const durMedia = durCount ? Math.round(durSum/durCount) : 0;
+
+// ── Marcos: Homologação (última semana de agosto) → Produção ──
+const today = new Date(); today.setHours(0,0,0,0);
+const year = today.getFullYear();
+const homologInicio = new Date(year, 7, 24);
+const homologFim = new Date(year, 7, 31);
+const producaoInicio = new Date(year, 8, 1);
+const diasAteHomolog = diffD(today, homologInicio);
+
+// ── KPIs de produtividade ──
+const kpiRow = `
+<div class="kpi-grid" style="grid-template-columns:repeat(6,1fr);">
+<div class="kpi-card blue"><div class="num">${lastPctConcluido}%</div><div class="lbl">Progresso Geral</div></div>
+<div class="kpi-card green"><div class="num">${k.concluido||0}</div><div class="lbl">Concluídos</div></div>
+<div class="kpi-card amber"><div class="num">${k.emAndamento||0}</div><div class="lbl">Em Andamento</div></div>
+<div class="kpi-card ${k.atrasados>0?'red':'green'}"><div class="num">${k.atrasados||0}</div><div class="lbl">Atrasados</div></div>
+<div class="kpi-card ${k.bloqueados>0?'amber':'green'}"><div class="num">${k.bloqueados||0}</div><div class="lbl">Bloqueados</div></div>
+<div class="kpi-card blue"><div class="num">${durMedia}d</div><div class="lbl">Duração Média/Item</div></div>
+</div>`;
+
+// ── Marcos (Homologação / Produção) ──
+const milestones = `
+<div class="milestone-track">
+<div class="milestone done">
+<div class="m-tag">Concluído</div>
+<div class="m-title">Desenvolvimento &amp; Sprint Atual</div>
+<div class="m-date">Até ${fmtDate(lastRoadmapSprintEnd)}</div>
+</div>
+<div class="milestone current">
+<div class="m-tag">${diasAteHomolog>=0 ? diasAteHomolog+' dias restantes' : 'Em andamento'}</div>
+<div class="m-title">Homologação</div>
+<div class="m-date">${fmtDate(isoLocal(homologInicio))} – ${fmtDate(isoLocal(homologFim))} (última semana de agosto)</div>
+</div>
+<div class="milestone next">
+<div class="m-tag">Em seguida</div>
+<div class="m-title">Produção (Go-live)</div>
+<div class="m-date">A partir de ${fmtDate(isoLocal(producaoInicio))}</div>
+</div>
+</div>`;
+
+// ── Gestão de Riscos ──
+const riscos = [
+{
+titulo: 'Atraso na entrega antes da Homologação',
+prob: k.atrasados>2?'Alta':(k.atrasados>0?'Média':'Baixa'),
+impacto: 'Alto',
+status: k.atrasados>2?'red':(k.atrasados>0?'amber':'green'),
+mitigacao: `Priorizar os ${k.atrasados||0} itens atrasados e replanejar capacidade antes de 24/08.`
+},
+{
+titulo: 'Itens bloqueados impactando o cronograma',
+prob: k.bloqueados>2?'Alta':(k.bloqueados>0?'Média':'Baixa'),
+impacto: 'Alto',
+status: k.bloqueados>2?'red':(k.bloqueados>0?'amber':'green'),
+mitigacao: `Escalar os ${k.bloqueados||0} bloqueios com os responsáveis e áreas dependentes.`
+},
+{
+titulo: 'Janela curta de Homologação (última semana de agosto)',
+prob: 'Média',
+impacto: 'Alto',
+status: 'amber',
+mitigacao: 'Congelar escopo até 20/08 e reservar equipe dedicada para os testes de homologação.'
+},
+{
+titulo: 'Corte imediato para Produção após a Homologação',
+prob: 'Média',
+impacto: 'Alto',
+status: 'amber',
+mitigacao: 'Preparar plano de rollback e plantão pós go-live para os primeiros dias de Produção.'
+},
+{
+titulo: 'Concentração de itens em poucos responsáveis',
+prob: 'Média',
+impacto: 'Médio',
+status: 'amber',
+mitigacao: 'Redistribuir carga entre a equipe e mapear back-ups para os responsáveis mais sobrecarregados.'
+}
+];
+
+const riscoRows = riscos.map(r => `
+<tr>
+<td style="font-weight:600;color:var(--ink);">${r.titulo}</td>
+<td>${r.prob}</td>
+<td>${r.impacto}</td>
+<td><span class="risk-badge ${r.status}">${r.status==='red'?'Crítico':r.status==='amber'?'Atenção':'Controlado'}</span></td>
+<td>${r.mitigacao}</td>
+</tr>`).join('');
+
+document.getElementById('metricasMain').innerHTML = `
+<div class="card">
+<div class="card-header">
+<div class="card-num">M1</div>
+<div>
+<div class="card-title">Indicadores de Produtividade</div>
+<div class="card-sub">Projeto Vivahcare · ${lastSprintName||''} · Gerado em ${lastGeradoEm ? new Date(lastGeradoEm).toLocaleString('pt-BR') : '—'}</div>
+</div>
+</div>
+<div class="card-body">${kpiRow}</div>
+</div>
+
+<div class="card">
+<div class="card-header">
+<div class="card-num">M2</div>
+<div>
+<div class="card-title">Marcos do Projeto</div>
+<div class="card-sub">Sprint atual → Homologação (última semana de agosto) → Produção</div>
+</div>
+</div>
+<div class="card-body">${milestones}</div>
+</div>
+
+<div class="card">
+<div class="card-header">
+<div class="card-num">M3</div>
+<div>
+<div class="card-title">Acompanhamento — Gráficos</div>
+<div class="card-sub">Distribuição mensal, status, responsáveis e progresso desde o início do projeto</div>
+</div>
+</div>
+<div class="card-body">
+<div class="chart-grid">
+<div class="chart-card">
+<h4>Itens por Período Mensal</h4>
+<p>Total de itens vs. concluídos, por mês de vencimento</p>
+<canvas id="chartMensal"></canvas>
+</div>
+<div class="chart-card">
+<h4>Distribuição por Status</h4>
+<p>Concluído · Em andamento · Pendente</p>
+<canvas id="chartStatus"></canvas>
+</div>
+<div class="chart-card">
+<h4>Itens por Responsável</h4>
+<p>Carga de trabalho atual da equipe</p>
+<canvas id="chartResponsavel"></canvas>
+</div>
+<div class="chart-card">
+<h4>Progresso Acumulado</h4>
+<p>% concluído por mês (tendência)</p>
+<canvas id="chartProgresso"></canvas>
+</div>
+</div>
+</div>
+</div>
+
+<div class="card">
+<div class="card-header">
+<div class="card-num">M4</div>
+<div>
+<div class="card-title">Gestão de Riscos</div>
+<div class="card-sub">Riscos identificados, probabilidade, impacto e mitigação</div>
+</div>
+</div>
+<div class="card-body">
+<table class="risk-table">
+<thead><tr><th>Risco</th><th>Probabilidade</th><th>Impacto</th><th>Status</th><th>Mitigação</th></tr></thead>
+<tbody>${riscoRows}</tbody>
+</table>
+</div>
+</div>
+`;
+
+// ── Gráficos (Chart.js) ──
+const monthLabels = months.map(m => monthLabel(m.date));
+const monthTotals = months.map(m => m.total);
+const monthConcl = months.map(m => m.concluido);
+const monthPct = months.map(m => m.total ? Math.round((m.concluido/m.total)*100) : 0);
+
+metricasCharts.push(new Chart(document.getElementById('chartMensal'), {
+type: 'bar',
+data: {
+labels: monthLabels,
+datasets: [
+{ label: 'Total', data: monthTotals, backgroundColor: '#c9d2e3' },
+{ label: 'Concluídos', data: monthConcl, backgroundColor: '#2FAE60' }
+]
+},
+options: { responsive:true, plugins:{legend:{position:'bottom'}}, scales:{y:{beginAtZero:true,ticks:{precision:0}}} }
+}));
+
+metricasCharts.push(new Chart(document.getElementById('chartStatus'), {
+type: 'doughnut',
+data: {
+labels: ['Concluído','Em andamento','Pendente'],
+datasets: [{ data: [stConcluido, stAndamento, stPendente], backgroundColor: ['#2FAE60','#F2A93B','#9aa1b1'] }]
+},
+options: { responsive:true, plugins:{legend:{position:'bottom'}} }
+}));
+
+const respLabels = (k.porResponsavel||[]).map(r => r.nome);
+const respData = (k.porResponsavel||[]).map(r => r.total);
+metricasCharts.push(new Chart(document.getElementById('chartResponsavel'), {
+type: 'bar',
+data: { labels: respLabels, datasets: [{ label: 'Itens', data: respData, backgroundColor: '#2F6FED' }] },
+options: { indexAxis:'y', responsive:true, plugins:{legend:{display:false}}, scales:{x:{beginAtZero:true,ticks:{precision:0}}} }
+}));
+
+metricasCharts.push(new Chart(document.getElementById('chartProgresso'), {
+type: 'line',
+data: { labels: monthLabels, datasets: [{ label:'% Concluído', data: monthPct, borderColor:'#2F6FED', backgroundColor:'rgba(47,111,237,0.15)', fill:true, tension:0.3 }] },
+options: { responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,max:100}} }
+}));
 }
 
 // ── GERAR PDF ──
