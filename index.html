@@ -519,7 +519,7 @@ const MIN_DAY_W = 20;
 const dayW = Math.max((availW - LEFT_W - 1) / totalDays, MIN_DAY_W);
 const W = LEFT_W + dayW * totalDays + 1;
 
-let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${totalH}" viewBox="0 0 ${W} ${totalH}" style="display:block;width:100%;font-family:Segoe UI,Arial,sans-serif;">`;
+let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${totalH}" viewBox="0 0 ${W} ${totalH}" style="display:block;width:${W}px;max-width:none;font-family:Segoe UI,Arial,sans-serif;">`;
 
 // Fundo alternado
 lista.forEach((_, i) => {
